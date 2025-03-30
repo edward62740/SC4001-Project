@@ -13,12 +13,18 @@ The following works are in progress:
 
 Disambiguation: It is not clear whether we need to use the validation set at all. The other works just directly evaluate on test set and seemingly never use it.. So I just follow those works.
 
+![Test Image](figures/test_images.png)
 
 # Usage
 
 Run `bootstrap.py` to create the dataset and label files.<br>
 Model can be trained with `train.py` in the `train/` folder. It is important to define MAX_GRAD_ACCUM_SUB_BATCH which divisble by 3 (for triplet loss) and is used to accumulate gradients (e.g. 32 batch size takes >32 GB VRAM on V100) <br>
 The config location is set in `setup.py`. The config file should contain all non-default settings.<br>
+
+In `test/`,<br>
+Evaluate the model performance with `test.py`. Load from bin or pth ckpt.<br>
+Draw the diagram of example classifications with `test_img.py`.<br>
+
 
 # Experiment Results
 
