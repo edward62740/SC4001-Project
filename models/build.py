@@ -5,6 +5,7 @@ import torch
 import numpy as np
 from models import vit
 from models.IELT import InterEnsembleLearningTransformer
+from models.IELT_DINOv2 import IELT_DINOv2
 
 backbone = {
 	'ViT-B_16': vit.get_b16_config(),
@@ -12,17 +13,33 @@ backbone = {
 	'ViT-L_16': vit.get_l16_config(),
 	'ViT-L_32': vit.get_l32_config(),
 	'ViT-H_14': vit.get_h14_config(),
+	'dinov2_vitb': vit.get_dinob16_config(),
+	'dino_vitb16': vit.get_b16_config(),
 	'testing': vit.get_testing(),
 }
 
 
 def build_models(config, num_classes):
+	#print(config.model.baseline_model)
 	if config.model.baseline_model:
 		model = baseline_models(config, num_classes)
 		load_pretrained(config, model)
 		return model
+
+	elif config.model.name == 'dinov2_vitb' or config.model.name == 'dino_vitb16':
+		model = IELT_DINOv2(backbone[config.model.name], config.data.img_size, num_classes,
+		                                         config.data.dataset, config.model.label_smooth, config.parameters.loss_alpha,
+		                                         config.parameters.cam, config.parameters.dsm, config.parameters.fix,
+		                                         config.parameters.update_warm, config.parameters.vote_perhead,
+		                                         config.parameters.total_num, config.parameters.assess)
+		# ld from checkpoint
+		print(config.model.pretrained)
+		#exit()
+		model.load_from(torch.load(config.model.pretrained))
+		return model
 	else:
 		structure = backbone[config.model.name]
+  
 		model = InterEnsembleLearningTransformer(structure, config.data.img_size, num_classes, config.data.dataset,
 		                                         config.model.label_smooth,
 		                                         config.parameters.loss_alpha, config.parameters.cam,
@@ -30,7 +47,9 @@ def build_models(config, num_classes):
 		                                         config.parameters.update_warm, config.parameters.vote_perhead,
 		                                         config.parameters.total_num,
 		                                         config.parameters.assess)
-	model.load_from(np.load(config.model.pretrained))
+	if config.model.pretrained is not None:
+		model.load_from(np.load(config.model.pretrained))
+
 	return model
 
 
@@ -138,7 +157,6 @@ def load_pretrained(config, model):
 		del state_dict['head.bias']
 
 	msg = model.load_state_dict(state_dict, strict=False)
-	# print(msg)
 	if config.local_rank in [-1, 0]:
 		print('-' * 16, ' Loaded successfully \'{:^22}\' '.format(config.model.pretrained), '-' * 16)
 

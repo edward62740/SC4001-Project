@@ -50,13 +50,6 @@ class Log:
 
 def PTitle(log, rank=0):
 	if rank not in [-1, 0]: return
-	log.info('=' * 80)
-	log.info(' Fine-Grained Visual Classification via Internal Ensemble Learning Transformer\n'
-	         '                            Pytorch Implementation')
-	log.info('=' * 80)
-	log.info('Author:\t\tXu Qin,\t\tWang Jiahui,\t\tJiang Bo,\t\tLuo Bin\n'
-	         'Institute:\tAnhui University\t\t\t\t\tDate: 2023-02-13')
-	log.info('-' * 80)
 	log.info(f'Python Version: {platform.python_version()}         '
 	         f'Pytorch Version: {torch.__version__}         Cuda Version: {torch.version.cuda}')
 	log.info('-' * 80, '\n')

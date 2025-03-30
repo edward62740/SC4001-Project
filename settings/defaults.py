@@ -21,13 +21,17 @@ _C.data.mixup = 0.  # 0.8
 _C.data.cutmix = 0.  # 1.0
 _C.data.rotate = 0.
 
+_C.data.triplet = True
+_C.data.triplet_margin = 0.2
+_C.data.triplet_lambda = 0.1
+
 # -----------------------------------------------------------------------------
 # Model Settings
 # -----------------------------------------------------------------------------
 _C.model = CN()
 _C.model.type = 'ViT'
 _C.model.name = 'ViT-B_16'
-_C.model.baseline_model = True
+_C.model.baseline_model = False
 _C.model.pretrained = 'pretrained'
 _C.model.pre_version = ''
 _C.model.pre_suffix = '.npz'
@@ -61,7 +65,7 @@ _C.train.epochs = 50
 _C.train.warmup_epochs = 0
 _C.train.weight_decay = 0
 _C.train.clip_grad = None
-_C.train.checkpoint = False
+_C.train.checkpoint = True
 _C.train.lr = 2e-02
 _C.train.scheduler = 'cosine'
 _C.train.lr_epoch_update = False
@@ -86,7 +90,7 @@ _C.misc.eval_mode = False
 _C.misc.throughput = False
 _C.misc.fused_window = True
 
-_C.write = False
+_C.write = True
 _C.local_rank = -1
 _C.device = 'cuda'
 _C.cuda_visible = '0,1'

@@ -89,3 +89,32 @@ def get_h14_config():
 	config.classifier = 'token'
 	config.representation_size = None
 	return config
+
+
+def get_b16_config():
+    """Returns the ViT-B/16 configuration."""
+    config = ml_collections.ConfigDict()
+    config.patches = (16,16)
+    config.hidden_size = 768
+    config.mlp_dim = 3072
+    config.num_heads = 12
+    config.num_layers = 12
+    config.att_dropout = 0.0
+    config.dropout_rate = 0.1
+    config.classifier = 'token'
+    return config
+
+
+
+def get_dinob16_config():
+    """Returns the DINOv2-B/16 configuration."""
+    config = ml_collections.ConfigDict()
+    config.patches = (14,14)
+    config.hidden_size = 768
+    config.mlp_dim = 3072
+    config.num_heads = 12
+    config.num_layers = 12
+    config.att_dropout = 0.0
+    config.dropout_rate = 0.1
+    config.classifier = 'token'
+    return config

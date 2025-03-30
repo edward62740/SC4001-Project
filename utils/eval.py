@@ -78,7 +78,7 @@ def load_checkpoint(config, model, optimizer=None, scheduler=None, loss_scaler=N
 		log.info(f"--------------- Resuming form {config.model.resume} ---------------")
 	except:
 		pass
-	checkpoint = torch.load(config.model.resume, map_location='cpu')
+	checkpoint = torch.load(config.model.resume, map_location='cpu', weights_only=False)
 	msg = model.load_state_dict(checkpoint['model'], strict=False)
 	try:
 		log.info(msg)
@@ -118,8 +118,9 @@ class NativeScalerWithGradNormCount:
 	def __init__(self):
 		self._scaler = torch.cuda.amp.GradScaler()
 
-	def __call__(self, loss, optimizer, clip_grad=None, parameters=None, create_graph=False, update_grad=True):
-		self._scaler.scale(loss).backward(create_graph=create_graph)
+	def __call__(self, loss, optimizer, clip_grad=None, parameters=None, create_graph=False, update_grad=True, no_backward=False):
+		if not no_backward:
+			self._scaler.scale(loss).backward(create_graph=create_graph)
 		if update_grad:
 			if clip_grad is not None:
 				assert parameters is not None

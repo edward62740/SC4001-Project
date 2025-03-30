@@ -219,47 +219,81 @@ class Block(nn.Module):
 		x = x + h
 		return x, weights
 
-	def load_from(self, weights, n_block):
-		ROOT = f"Transformer/encoderblock_{n_block}"
+	def load_from(self, weights, n_block, dinov2=False):
 		with torch.no_grad():
-			query_weight = np2th(weights[pjoin(ROOT, ATTENTION_Q, "kernel")]).view(self.hidden_size,
-			                                                                       self.hidden_size).t()
-			key_weight = np2th(weights[pjoin(ROOT, ATTENTION_K, "kernel")]).view(self.hidden_size, self.hidden_size).t()
-			value_weight = np2th(weights[pjoin(ROOT, ATTENTION_V, "kernel")]).view(self.hidden_size,
-			                                                                       self.hidden_size).t()
-			out_weight = np2th(weights[pjoin(ROOT, ATTENTION_OUT, "kernel")]).view(self.hidden_size,
-			                                                                       self.hidden_size).t()
+			if dinov2:
+				ROOT = f"blocks.{n_block}"
+				qkv_weight = weights[f"{ROOT}.attn.qkv.weight"]  # shape: [3*hidden_size, hidden_size]
+				qkv_bias = weights[f"{ROOT}.attn.qkv.bias"]          # shape: [3*hidden_size]
+				hidden_size = self.hidden_size
+				query_weight, key_weight, value_weight = torch.split(qkv_weight, hidden_size, dim=0)
+				query_bias, key_bias, value_bias = torch.split(qkv_bias, hidden_size, dim=0)
 
-			query_bias = np2th(weights[pjoin(ROOT, ATTENTION_Q, "bias")]).view(-1)
-			key_bias = np2th(weights[pjoin(ROOT, ATTENTION_K, "bias")]).view(-1)
-			value_bias = np2th(weights[pjoin(ROOT, ATTENTION_V, "bias")]).view(-1)
-			out_bias = np2th(weights[pjoin(ROOT, ATTENTION_OUT, "bias")]).view(-1)
+				out_weight = weights[f"{ROOT}.attn.proj.weight"]
+				out_bias = weights[f"{ROOT}.attn.proj.bias"]
 
-			self.attn.query.weight.copy_(query_weight)
-			self.attn.key.weight.copy_(key_weight)
-			self.attn.value.weight.copy_(value_weight)
-			self.attn.out.weight.copy_(out_weight)
-			self.attn.query.bias.copy_(query_bias)
-			self.attn.key.bias.copy_(key_bias)
-			self.attn.value.bias.copy_(value_bias)
-			self.attn.out.bias.copy_(out_bias)
+				self.attn.query.weight.copy_(query_weight)
+				self.attn.key.weight.copy_(key_weight)
+				self.attn.value.weight.copy_(value_weight)
+				self.attn.out.weight.copy_(out_weight)
+				self.attn.query.bias.copy_(query_bias)
+				self.attn.key.bias.copy_(key_bias)
+				self.attn.value.bias.copy_(value_bias)
+				self.attn.out.bias.copy_(out_bias)
 
-			mlp_weight_0 = np2th(weights[pjoin(ROOT, FC_0, "kernel")]).t()
-			mlp_weight_1 = np2th(weights[pjoin(ROOT, FC_1, "kernel")]).t()
-			mlp_bias_0 = np2th(weights[pjoin(ROOT, FC_0, "bias")]).t()
-			mlp_bias_1 = np2th(weights[pjoin(ROOT, FC_1, "bias")]).t()
+				mlp_weight_0 = weights[f"{ROOT}.mlp.fc1.weight"]
+				mlp_bias_0 = weights[f"{ROOT}.mlp.fc1.bias"]
+				mlp_weight_1 = weights[f"{ROOT}.mlp.fc2.weight"]
+				mlp_bias_1 = weights[f"{ROOT}.mlp.fc2.bias"]
 
-			self.ffn.fc1.weight.copy_(mlp_weight_0)
-			self.ffn.fc2.weight.copy_(mlp_weight_1)
-			self.ffn.fc1.bias.copy_(mlp_bias_0)
-			self.ffn.fc2.bias.copy_(mlp_bias_1)
+				self.ffn.fc1.weight.copy_(mlp_weight_0)
+				self.ffn.fc2.weight.copy_(mlp_weight_1)
+				self.ffn.fc1.bias.copy_(mlp_bias_0)
+				self.ffn.fc2.bias.copy_(mlp_bias_1)
 
-			self.attention_norm.weight.copy_(np2th(weights[pjoin(ROOT, ATTENTION_NORM, "scale")]))
-			self.attention_norm.bias.copy_(np2th(weights[pjoin(ROOT, ATTENTION_NORM, "bias")]))
-			self.ffn_norm.weight.copy_(np2th(weights[pjoin(ROOT, MLP_NORM, "scale")]))
-			self.ffn_norm.bias.copy_(np2th(weights[pjoin(ROOT, MLP_NORM, "bias")]))
+				self.attention_norm.weight.copy_(weights[f"{ROOT}.norm1.weight"])
+				self.attention_norm.bias.copy_(weights[f"{ROOT}.norm1.bias"])
+				self.ffn_norm.weight.copy_(weights[f"{ROOT}.norm2.weight"])
+				self.ffn_norm.bias.copy_(weights[f"{ROOT}.norm2.bias"])
 
-# if __name__ == '__main__':
-# from core.vit import *
-# config = get_b16_config()
-# config.hidden_size = 4
+			else:
+				ROOT = f"Transformer/encoderblock_{n_block}"
+				query_weight = np2th(weights[pjoin(ROOT, ATTENTION_Q, "kernel")]).view(self.hidden_size, self.hidden_size).t()
+				key_weight = np2th(weights[pjoin(ROOT, ATTENTION_K, "kernel")]).view(self.hidden_size, self.hidden_size).t()
+				value_weight = np2th(weights[pjoin(ROOT, ATTENTION_V, "kernel")]).view(self.hidden_size, self.hidden_size).t()
+				out_weight = np2th(weights[pjoin(ROOT, ATTENTION_OUT, "kernel")]).view(self.hidden_size, self.hidden_size).t()
+
+				query_bias = np2th(weights[pjoin(ROOT, ATTENTION_Q, "bias")]).view(-1)
+				key_bias = np2th(weights[pjoin(ROOT, ATTENTION_K, "bias")]).view(-1)
+				value_bias = np2th(weights[pjoin(ROOT, ATTENTION_V, "bias")]).view(-1)
+				out_bias = np2th(weights[pjoin(ROOT, ATTENTION_OUT, "bias")]).view(-1)
+
+				self.attn.query.weight.copy_(query_weight)
+				self.attn.key.weight.copy_(key_weight)
+				self.attn.value.weight.copy_(value_weight)
+				self.attn.out.weight.copy_(out_weight)
+				self.attn.query.bias.copy_(query_bias)
+				self.attn.key.bias.copy_(key_bias)
+				self.attn.value.bias.copy_(value_bias)
+				self.attn.out.bias.copy_(out_bias)
+
+				mlp_weight_0 = np2th(weights[pjoin(ROOT, FC_0, "kernel")]).t()
+				mlp_weight_1 = np2th(weights[pjoin(ROOT, FC_1, "kernel")]).t()
+				mlp_bias_0 = np2th(weights[pjoin(ROOT, FC_0, "bias")]).t()
+				mlp_bias_1 = np2th(weights[pjoin(ROOT, FC_1, "bias")]).t()
+
+				self.ffn.fc1.weight.copy_(mlp_weight_0)
+				self.ffn.fc2.weight.copy_(mlp_weight_1)
+				self.ffn.fc1.bias.copy_(mlp_bias_0)
+				self.ffn.fc2.bias.copy_(mlp_bias_1)
+
+				self.attention_norm.weight.copy_(np2th(weights[pjoin(ROOT, ATTENTION_NORM, "scale")]))
+				self.attention_norm.bias.copy_(np2th(weights[pjoin(ROOT, ATTENTION_NORM, "bias")]))
+				self.ffn_norm.weight.copy_(np2th(weights[pjoin(ROOT, MLP_NORM, "scale")]))
+				self.ffn_norm.bias.copy_(np2th(weights[pjoin(ROOT, MLP_NORM, "bias")]))
+
+
+	# if __name__ == '__main__':
+	# from core.vit import *
+	# config = get_b16_config()
+	# config.hidden_size = 4

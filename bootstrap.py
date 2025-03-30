@@ -38,13 +38,11 @@ if not all(os.path.exists(f) for f in required_files):
     print("Downloading splits...")
     download_file('http://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat')
 
-# Load dataset splits
 setid = loadmat(os.path.join(data_dir, 'setid.mat'))
 idx_train = setid['trnid'][0] - 1
 idx_test = setid['tstid'][0] - 1
 idx_valid = setid['valid'][0] - 1
 
-# Load and process labels
 image_labels = loadmat(os.path.join(data_dir, 'imagelabels.mat'))['labels'][0]
 image_labels -= 1
 

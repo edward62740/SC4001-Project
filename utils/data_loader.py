@@ -84,8 +84,8 @@ def build_loader(config):
 
 	elif config.data.dataset == 'flowers':
 		root = os.path.join(config.data.data_root, 'flowers')
-		train_set = OxfordFlowers(root, True, train_transform)
-		test_set = OxfordFlowers(root, False, test_transform)
+		train_set = TripletOxfordFlowers(root, True, train_transform)
+		test_set = TripletOxfordFlowers(root, False, test_transform)
 		num_classes = 102
 
 	if config.local_rank == -1:
@@ -98,7 +98,7 @@ def build_loader(config):
 	num_workers = 0 if sys.platform == 'win32' else 16
 	# print(sys.platform)
 	train_loader = DataLoader(train_set, sampler=train_sampler, batch_size=config.data.batch_size,
-	                          num_workers=num_workers, drop_last=True, pin_memory=True)
+	                          num_workers=num_workers, drop_last=True, pin_memory=True, shuffle=False)
 	test_loader = DataLoader(test_set, sampler=test_sampler, batch_size=config.data.batch_size,
 	                         num_workers=num_workers, shuffle=False, drop_last=False, pin_memory=True)
 

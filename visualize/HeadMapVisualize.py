@@ -11,6 +11,16 @@ from setup import config
 import matplotlib.pyplot as plt
 import scipy.ndimage as ndimage
 import numpy as np
+from settings.defaults import _C
+from settings.setup_functions import *
+
+#config = _C.clone()
+#cfg_file = os.path.join('configs', 'flowers.yaml')
+# cfg_file = os.path.join('..','configs', 'cub.yaml')
+#config = SetupConfig(config, cfg_file)
+#config.defrost()
+
+
 
 transform = transforms.Compose([
 									transforms.Resize((600,), InterpolationMode.BILINEAR),
@@ -18,7 +28,7 @@ transform = transforms.Compose([
 			                        transforms.CenterCrop((448, 448)),
 									# transforms.ColorJitter(brightness=0.4, contrast=0.4),
 			                        transforms.ToTensor()])
-base_root = '../figures/paper_img/headmap'
+base_root = '../figures/'
 
 def show_grid_images(imgs, rows, cols, titles=None, scale=3, cmap='rainbow'):
 	'''打印若干行列的图片'''
@@ -71,8 +81,11 @@ def build_test_model(checkpoint_root):
 	config.misc.eval_mode = True
 	config.parameters.assess = True
 	config.model.resume = checkpoint_root
+	config.model.pretrained = None
 	config.freeze()
-	model,_ = build_model(config,200)
+	print(config.model.name)
+ 
+	model,_ = build_model(config,102)
 	load_checkpoint(config,model)
 
 	return model
@@ -137,7 +150,7 @@ def head_attention_map(model,img,show_img):
 
 
 if __name__ == '__main__':
-	img_path = os.path.join('../figures/Crested_Auklet_0003_794962.jpg')
-	model = build_test_model('../output/cub/IELT 05-08_16-10/checkpoint.bin')
+	img_path = os.path.join('../figures/flower.jpg')
+	model = build_test_model('output/ckpt_epoch_43.pth')
 	tensor_img, show_img = preprocess_img(img_path)
 	head_attention_map(model, tensor_img, show_img)
