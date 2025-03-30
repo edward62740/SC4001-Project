@@ -2,6 +2,8 @@
 
 Implementation of ViT-based FGVC on Oxford Flowers dataset.
 
+Currently, it is based on pre-trained ViT-B with the IELT ensemble learning mechanism.
+
 The following changes have been implemented:
 - Batch-hard triplet loss (see loss.py and train/) [TASK 4]
 - Multi-scale gaussian filter in MHV within IELT, in all blocks {1 .. L-1}, using dilated conv [TASK 1]
