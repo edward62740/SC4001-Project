@@ -115,6 +115,7 @@ def get_dinob16_config():
     config.num_heads = 12
     config.num_layers = 12
     config.att_dropout = 0.0
-    config.dropout_rate = 0.1
+    config.dropout_rate = 0.0
     config.classifier = 'token'
+    config.ls = True
     return config

@@ -2,7 +2,7 @@ from settings.defaults import _C
 from settings.setup_functions import *
 
 config = _C.clone()
-cfg_file = os.path.join('configs', 'flowers.yaml')
+cfg_file = os.path.join('configs', 'flowers_dinov2.yaml')
 # cfg_file = os.path.join('..','configs', 'cub.yaml')
 config = SetupConfig(config, cfg_file)
 config.defrost()

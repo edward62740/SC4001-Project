@@ -6,6 +6,7 @@ from utils.data_loader import build_loader
 import pandas as pd
 from tqdm import tqdm
 from prettytable import PrettyTable
+import argparse
 
 def denormalize(image, mean, std):
     image = image.clone()
@@ -14,9 +15,17 @@ def denormalize(image, mean, std):
     return image
 
 def evaluate_model():
+    argparser = argparse.ArgumentParser(description='Test the model')
+    argparser.add_argument('--weights', type=str, help='Path to the model weights')
+    argparser.add_argument('--batch_size', type=int,  help='Batch size for testing')
+    args = argparser.parse_args()
+    config.defrost()
+    config.data.batch_size = args.batch_size
+    config.freeze()
     _, test_loader, num_classes, _, _, _ = build_loader(config)
     model = build_models(config, num_classes)
-    weight_path = 'output/checkpoint.bin'
+
+    weight_path = args.weights
     checkpoint = torch.load(weight_path, map_location='cpu', weights_only=False)
     model.load_state_dict(checkpoint['model'])
     

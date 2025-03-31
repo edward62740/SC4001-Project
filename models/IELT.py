@@ -225,9 +225,9 @@ class IELTEncoder(nn.Module):
 
         self.total_num = total_num
         ## for CUB and NABirds
-        self.select_rate = torch.tensor([16, 14, 12, 10, 8, 6, 8, 10, 12, 14, 16], device='cuda') / self.total_num
+        # self.select_rate = torch.tensor([16, 14, 12, 10, 8, 6, 8, 10, 12, 14, 16], device='cuda') / self.total_num
         ## for Others
-        # self.select_rate = torch.ones(self.layer_num-1,device='cuda')/(self.layer_num-1)
+        self.select_rate = torch.ones(self.layer_num-1,device='cuda')/(self.layer_num-1)
 
         self.select_num = self.select_rate * self.total_num
         self.clr_encoder = CrossLayerRefinement(config, self.clr_layer)

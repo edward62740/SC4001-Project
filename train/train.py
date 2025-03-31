@@ -12,10 +12,10 @@ from utils.optimizer import build_optimizer
 from utils.scheduler import build_scheduler
 from losses.loss import *
 
-MAX_GRAD_ACCUM_SUB_BATCH = 3
+MAX_GRAD_ACCUM_SUB_BATCH = 1
 
-if MAX_GRAD_ACCUM_SUB_BATCH % 3 != 0 and config.triplet == True:
-    raise ValueError(f"MAX_GRAD_ACCUM_SUB_BATCH must be divisible by 3, but got {MAX_GRAD_ACCUM_SUB_BATCH}")
+#if MAX_GRAD_ACCUM_SUB_BATCH % 3 != 0 and config.triplet == True:
+#    raise ValueError(f"MAX_GRAD_ACCUM_SUB_BATCH must be divisible by 3, but got {MAX_GRAD_ACCUM_SUB_BATCH}")
 
 print(f"Checkpointing? {config.train.checkpoint}")
 
@@ -213,7 +213,7 @@ def train_one_epoch(config, model, criterion, train_loader, optimizer, epoch, sc
 
                 #logits, sub_loss, cls = loss_in_iters(logits, sub_y, criterion, ret_cls=True) # expect cls = [1, B, D]
                 
-                if True: #switch to cfg
+                if config.data.triplet: #switch to cfg
                     cls = out[-1]
                     out = out[0]
                     
