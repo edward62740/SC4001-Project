@@ -119,3 +119,17 @@ def get_dinob16_config():
     config.classifier = 'token'
     config.ls = True
     return config
+
+def get_dinos16_config():
+	"""Returns the DINOv2-S/16 configuration."""
+	config = ml_collections.ConfigDict()
+	config.patches = (14,14)
+	config.hidden_size = 384
+	config.mlp_dim = 1536
+	config.num_heads = 6
+	config.num_layers = 12
+	config.att_dropout = 0.0
+	config.dropout_rate = 0.0
+	config.classifier = 'token'
+	config.ls = True
+	return config

@@ -14,6 +14,7 @@ backbone = {
 	'ViT-L_32': vit.get_l32_config(),
 	'ViT-H_14': vit.get_h14_config(),
 	'dinov2_vitb': vit.get_dinob16_config(),
+	'dinov2_vits': vit.get_dinos16_config(),
 	'dino_vitb16': vit.get_b16_config(),
 	'testing': vit.get_testing(),
 }
@@ -26,14 +27,14 @@ def build_models(config, num_classes):
 		load_pretrained(config, model)
 		return model
 
-	elif config.model.name == 'dinov2_vitb' or config.model.name == 'dino_vitb16':
+	elif config.model.name == 'dinov2_vitb' or config.model.name == 'dino_vitb16' or config.model.name == 'dinov2_vits':
 		model = IELT_DINOv2(backbone[config.model.name], config.data.img_size, num_classes,
 		                                         config.data.dataset, config.model.label_smooth, config.parameters.loss_alpha,
 		                                         config.parameters.cam, config.parameters.dsm, config.parameters.fix,
 		                                         config.parameters.update_warm, config.parameters.vote_perhead,
-		                                         config.parameters.total_num, config.parameters.assess)
+		                                         config.parameters.total_num, config.parameters.assess, forward_features=config.model.forward_features,
+                                           		 merge_inattentive=config.model.merge_inattentive)
 		# ld from checkpoint
-		print(config.model.pretrained)
 		#exit()
 		model.load_from(torch.load(config.model.pretrained))
 		return model

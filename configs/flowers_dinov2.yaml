@@ -12,6 +12,7 @@ model:
   label_smooth: 0.
   name: 'dinov2_vitb'
   pre_suffix: '.pth'
+  merge_inattentive: False
 parameters:
   vote_perhead: 24
   loss_alpha: 0.4

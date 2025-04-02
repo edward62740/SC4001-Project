@@ -27,7 +27,7 @@ def np2th(weights, conv=False):
 class IELT_DINOv2(nn.Module):
     def __init__(self, config, img_size=448, num_classes=200, dataset='cub', smooth_value=0.,
                  loss_alpha=0.4, cam=True, dsm=True, fix=True, update_warm=500,
-                 vote_perhead=24, total_num=126, assess=False):
+                 vote_perhead=24, total_num=126, assess=False, forward_features=False, merge_inattentive=False):
         super(IELT_DINOv2, self).__init__()
         self.assess = assess
         self.smooth_value = smooth_value
@@ -35,16 +35,20 @@ class IELT_DINOv2(nn.Module):
         self.loss_alpha = loss_alpha
         self.cam = cam
         self.patch_size = config.patches[0]
+        
+        self.merge_inattentive = merge_inattentive
 
         self.embeddings = Embeddings(img_size=img_size, patch_size=config.patches[0], in_chans=3, embed_dim=config.hidden_size)
         self.encoder = IELTEncoder(config, update_warm, vote_perhead, dataset, cam, dsm,
-                                   fix, total_num, assess)
+                                   fix, total_num, assess, forward_features=forward_features, merge_inattentive=merge_inattentive)
         self.head = Linear(config.hidden_size, num_classes)
         self.cls_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
         self.pos_embed = nn.Parameter(torch.zeros(1, self.patch_size*self.patch_size + 1, config.hidden_size))
         self.softmax = Softmax(dim=-1)
         self.interpolate_antialias=False
         self.interpolate_offset=0.1
+        self.forward_features = forward_features
+    
         
     
     def interpolate_pos_encoding(self, x, w, h):
@@ -90,17 +94,28 @@ class IELT_DINOv2(nn.Module):
             x = self.embeddings(x)
             x = torch.cat((self.cls_token.expand(x.shape[0], -1, -1), x), dim=1)
             x = x + self.interpolate_pos_encoding(x, w, h)
-
             if self.assess:
                 if return_cls:
-                    x, xc, assess_list, cls = self.encoder(x, test_mode, return_cls=True)
+                    if self.forward_features:
+                        x, xc, assess_list, cls, features = self.encoder(x, test_mode, return_cls=True)
+                    else:
+                        x, xc, assess_list, cls = self.encoder(x, test_mode, return_cls=True)
                 else:
-                    x, xc, assess_list = self.encoder(x, test_mode, return_cls)
+                    if self.forward_features:  
+                        x, xc, assess_list, features = self.encoder(x, test_mode, return_cls=False)
+                    else:
+                        x, xc, assess_list = self.encoder(x, test_mode, return_cls)
             else:
                 if return_cls:
-                    x, xc, cls = self.encoder(x, test_mode, return_cls=True)
+                    if self.forward_features:
+                        x, xc, cls, features = self.encoder(x, test_mode, return_cls=True)
+                    else:
+                        x, xc, cls = self.encoder(x, test_mode, return_cls=True)
                 else:
-                    x, xc = self.encoder(x, test_mode, return_cls)
+                    if self.forward_features:
+                        x, xc, features = self.encoder(x, test_mode, return_cls=False)
+                    else:
+                        x, xc = self.encoder(x, test_mode, return_cls)
 
             if self.cam:
                 complement_logits = self.head(xc)
@@ -118,7 +133,11 @@ class IELT_DINOv2(nn.Module):
 
             elif test_mode:
                 if return_cls:
+                    if self.forward_features:
+                        return part_logits, cls, features
                     return part_logits, cls
+                if self.forward_features:
+                    return part_logits, features
                 return part_logits
 
             else:
@@ -202,7 +221,7 @@ class MultiHeadVoting(nn.Module):
         self.fix = fix
         self.num_heads = config.num_heads
         self.vote_perhead = vote_perhead
-        self.dilations = [1, 2, 4]
+        self.dilations = [1, 2, 4] ## convolve at multiple scales, d
 
         if self.fix:
             self.kernel = torch.tensor([[1, 2, 1],
@@ -218,9 +237,9 @@ class MultiHeadVoting(nn.Module):
         B, patch_num = x.shape[0], x.shape[3] - 1
         select_num = self.vote_perhead if select_num is None else select_num
         count = torch.zeros((B, patch_num), dtype=torch.int, device='cuda').half()
-        score = x[:, :, 0, 1:]  ## (B, num_heads, patch_num)
+        score = x[:, :, 0, 1:]
         _, select = torch.topk(score, self.vote_perhead, dim=-1)
-        select = select.reshape(B, -1)  #(B, num_heads * vote_perhead)
+        select = select.reshape(B, -1)
 
         for i, b in enumerate(select):
             count[i, :] += torch.bincount(b, minlength=patch_num)
@@ -229,8 +248,12 @@ class MultiHeadVoting(nn.Module):
             count = self.enhace_local(count)
 
         patch_value, patch_idx = torch.sort(count, dim=-1, descending=True)
-        patch_idx += 1  # Adjust indices to start from 1
-        return patch_idx[:, :select_num], count
+        #patch_idx += 1  # Adjust indices to start from 1
+        # split into select_num and patch_num-select_num tokens
+        selected_tokens = patch_idx[:, :select_num]
+        selected_count = count
+        unselected_tokens = patch_idx[:, select_num:]
+        return selected_tokens, selected_count, unselected_tokens
 
     def enhace_local(self, count):
         B, patch_num = count.shape[0], count.shape[1]
@@ -264,10 +287,23 @@ class CrossLayerRefinement(nn.Module):
         out = self.clr_norm(out)
         return out, weights
 
+class TokenMerger(nn.Module):
+    def __init__(self, config):
+        super(TokenMerger, self).__init__()
+
+    def forward(self, tokens, s, idx):
+        # weighted sum where idx
+        s = s[idx]
+        tokens = tokens[idx]
+        z = tokens * s.unsqueeze(-1)
+
+        z_s = z.sum(0) / (s.sum(0) +1e-6)
+
+        return z_s.unsqueeze(0)
 
 class IELTEncoder(nn.Module):
     def __init__(self, config, update_warm=500, vote_perhead=24, dataset='cub',
-                 cam=True, dsm=True, fix=True, total_num=126, assess=False):
+                 cam=True, dsm=True, fix=True, total_num=126, assess=False, forward_features=False, merge_inattentive=False):
         super(IELTEncoder, self).__init__()
         self.assess = assess
         self.warm_steps = update_warm
@@ -277,6 +313,8 @@ class IELTEncoder(nn.Module):
         self.dataset = dataset
         self.cam = cam
         self.dsm = dsm
+        self.forward_features = forward_features
+        self.merge_inattentive = merge_inattentive
 
         #for _ in range(self.layer_num - 1):
         #    self.layer.append(Block(config, assess=self.assess))
@@ -330,12 +368,15 @@ class IELTEncoder(nn.Module):
 
         self.select_num = self.select_rate * self.total_num
         self.clr_encoder = CrossLayerRefinement(config, self.clr_layer)
+        if self.merge_inattentive:
+            self.merger = TokenMerger(config)
         self.count = 0
 
     def forward(self, hidden_states, test_mode=False, return_cls=False):
         if not test_mode:
             self.count += 1
         B, N, C = hidden_states.shape
+        features = []
         complements = [[] for i in range(B)]
         class_token_list = []
         if self.assess:
@@ -348,10 +389,23 @@ class IELTEncoder(nn.Module):
         for t in range(self.layer_num - 1):
             layer = self.layer[t]
             select_num = torch.round(self.select_num[t]).int()
+            if self.forward_features:
+                features.append(hidden_states[:, 1:])
             hidden_states, weights = layer(hidden_states)
-            select_idx, select_score = self.patch_select(weights, select_num)
+
+            select_idx, select_score, unselect_idx = self.patch_select(weights, select_num)
+            
             for i in range(B):
-                complements[i].extend(hidden_states[i, select_idx[i, :]])
+                if self.merge_inattentive:
+                    inattentive_tokens = self.merger(hidden_states[i, 1:], select_score[i, :], unselect_idx[i, :])
+                forward_tokens = hidden_states[i, select_idx[i, :]]
+                # concat with inattentive tokens
+                if self.merge_inattentive:
+                    out_tokens = torch.cat((forward_tokens, inattentive_tokens), dim=0)
+                else:
+                    out_tokens = forward_tokens
+                # print argmax 
+                complements[i].extend(out_tokens)
             class_token_list.append(hidden_states[:, 0].unsqueeze(1))
             if self.assess:
                 layer_weights.append(weights)
@@ -360,7 +414,7 @@ class IELTEncoder(nn.Module):
         cls_token = hidden_states[:, 0].unsqueeze(1)
 
         clr, weights = self.clr_encoder(complements, cls_token)
-        sort_idx, _ = self.patch_select(weights, select_num=24, last=True)
+        sort_idx, _, _ = self.patch_select(weights, select_num=24, last=True)
 
         if not test_mode and self.count >= self.warm_steps and self.dsm:
             # if not test_mode and self.count >= 500 and self.dsm:
@@ -385,14 +439,22 @@ class IELTEncoder(nn.Module):
         if self.assess:
             assess_list = [layer_weights, layer_selected, layer_score, sort_idx]
             if return_cls:
+                if self.forward_features:
+                    return key[:, 0], clr[:, 0], assess_list, cls_token, features
                 return key[:, 0], clr[:, 0], assess_list, cls_token
+            if self.forward_features:
+                return key[:, 0], clr[:, 0], assess_list, features
             return key[:, 0], clr[:, 0], assess_list
         else:
 
             # fused = torch.cat((class_token_list, clr[:, 0].unsqueeze(1)), dim=1)
             # clr[:, 0] = fused.mean(1)
             if return_cls:
+                if self.forward_features:
+                    return key[:, 0], clr[:, 0], cls_token, features
                 return key[:, 0], clr[:, 0], cls_token
+            if self.forward_features:
+                return key[:, 0], clr[:, 0], features
             return key[:, 0], clr[:, 0]
 
     def update_layer_select(self, layer_count):

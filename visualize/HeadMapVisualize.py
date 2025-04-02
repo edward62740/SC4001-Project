@@ -6,14 +6,14 @@ from PIL import Image
 from torchvision import transforms,datasets
 from torchvision.transforms import InterpolationMode
 from utils.eval import load_checkpoint
-from main import build_model
+from utils.data_loader import build_loader
 from setup import config
 import matplotlib.pyplot as plt
 import scipy.ndimage as ndimage
 import numpy as np
 from settings.defaults import _C
 from settings.setup_functions import *
-
+from models.build import build_models
 #config = _C.clone()
 #cfg_file = os.path.join('configs', 'flowers.yaml')
 # cfg_file = os.path.join('..','configs', 'cub.yaml')
@@ -21,7 +21,7 @@ from settings.setup_functions import *
 #config.defrost()
 
 
-
+_, test_loader, num_classes, _, _, _ = build_loader(config)
 transform = transforms.Compose([
 									transforms.Resize((600,), InterpolationMode.BILINEAR),
 									# transforms.Resize((448, 448), InterpolationMode.BILINEAR),
@@ -68,9 +68,9 @@ def normal_weights(weights):
 	print(weights.shape)
 	# 只取class token那一行所以第三维是（0，），取除了class token的n列，所以是（1：）
 	attention_map = weights[:, :, 0, 1:]
-	attention_map = attention_map.reshape(11, 12, 28, 28)
+	attention_map = attention_map.reshape(11, 12, 32, 32)
 	# 放大图像，让保存的图像在ps里变得清晰一些
-	attention_map = ndimage.zoom(attention_map, (1, 1, 16, 16), order=0)
+	attention_map = ndimage.zoom(attention_map, (1, 1, 14, 14), order=0)
 	return attention_map
 
 def build_test_model(checkpoint_root):
@@ -81,12 +81,12 @@ def build_test_model(checkpoint_root):
 	config.misc.eval_mode = True
 	config.parameters.assess = True
 	config.model.resume = checkpoint_root
-	config.model.pretrained = None
 	config.freeze()
 	print(config.model.name)
  
-	model,_ = build_model(config,102)
-	load_checkpoint(config,model)
+ 
+	model = build_models(config, num_classes)
+	
 
 	return model
 
@@ -102,6 +102,7 @@ def preprocess_img(img_path):
 	return img,show_img
 
 def head_attention_map(model,img,show_img):
+	model.to(device='cuda')
 	model.eval()
 	# 处理图像
 	img = transform(img)
@@ -129,9 +130,9 @@ def head_attention_map(model,img,show_img):
 
 		# 该层Multi-head Voting Module最后的选择结果
 		print(f'Layer {i+1} Final Selected')
-		count = np.bincount(layer_selected[i],minlength=784)
-		count = count.reshape(28,28)
-		count = ndimage.zoom(count,16,order=0)
+		count = np.bincount(layer_selected[i],minlength=1024)
+		count = count.reshape(32,32)
+		count = ndimage.zoom(count,14,order=0)
 		plt.imshow(count,cmap='gray')
 		plt.imshow(show_img.permute(1,2,0),alpha=0.5)
 		final_root = f'{base_root}/final_select'
@@ -141,8 +142,8 @@ def head_attention_map(model,img,show_img):
 		plt.show()
 
 		# 该层的增强后的得分图
-		layer_score[i] = layer_score[i].reshape(28, 28).detach().numpy()
-		layer_score[i] = ndimage.zoom(layer_score[i], 16, order=0)
+		layer_score[i] = layer_score[i].reshape(32, 32).detach().numpy()
+		layer_score[i] = ndimage.zoom(layer_score[i], 14, order=0)
 		score_root = f'{base_root}/scoremap'
 		os.makedirs(score_root,exist_ok=True)
 		plt.imsave(f'{score_root}/scoremap {i+1:2}.jpg',layer_score[i],cmap='hot')
@@ -150,7 +151,7 @@ def head_attention_map(model,img,show_img):
 
 
 if __name__ == '__main__':
-	img_path = os.path.join('../figures/flower.jpg')
-	model = build_test_model('output/ckpt_epoch_43.pth')
+	img_path = os.path.join('../IELT/flower.jpg')
+	model = build_test_model('output/dinov2_99.528.bin')
 	tensor_img, show_img = preprocess_img(img_path)
 	head_attention_map(model, tensor_img, show_img)

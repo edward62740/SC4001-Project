@@ -217,6 +217,8 @@ def train_one_epoch(config, model, criterion, train_loader, optimizer, epoch, sc
                     cls = out[-1]
                     out = out[0]
                     
+                    
+                # CE loss or other classification objective fn here
                 if not isinstance(out, (list, tuple)):
                     if mixup_fn is None:
                         sub_loss = criterion(out, sub_y)
@@ -228,10 +230,12 @@ def train_one_epoch(config, model, criterion, train_loader, optimizer, epoch, sc
                     logits = out
                 else:
                     logits, sub_loss = out
-    
+                    
+                # contrastive triplet loss here
                 triplet_loss = compute_triplet_loss(cls.clone().squeeze(1), sub_y)
                 #print(f"triplet_loss: {triplet_loss}", cls.detach().clone().squeeze(1).shape, sub_y.shape)
-
+                
+                # sum and scale losses
                 sub_loss = sub_loss + triplet_loss * config.data.triplet_lambda
                 total_loss += sub_loss / accumulation_steps
                 loss_scaler._scaler.scale(sub_loss / accumulation_steps).backward()

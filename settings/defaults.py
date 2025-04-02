@@ -42,6 +42,8 @@ _C.model.drop_path = 0.0
 _C.model.dropout = 0.0
 _C.model.label_smooth = 0.0
 _C.model.parameters = 0
+_C.model.forward_features = False
+_C.model.merge_inattentive = False
 
 # -----------------------------------------------------------------------------
 # Parameters Settings
