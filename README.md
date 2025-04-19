@@ -16,7 +16,7 @@ Figure 1: Example classification results of our models
 # Proposed Methods
 
 ## Architectural
-DINOv2 is used as the backbone network, and fine-tuned to the specific FGVC task. Tokens are selectively forwarded via the [IELT](https://github.com/mobulan/IELT) mechanism.
+DINOv2 is used as the backbone network, and fine-tuned to the specific FGVC task. Tokens are selectively forwarded via the [IELT](https://github.com/mobulan/IELT) mechanism.<br>
 <img src="https://github.com/user-attachments/assets/727dca34-bb56-4bb9-affa-0686080227cb" alt="sc4001_arch" width="50%" />
 
 Figure 1: Proposed Model Architecture
