@@ -1,6 +1,6 @@
 # SC4001 Project
 
-Implementation of DINOv2-based FGVC on Oxford Flowers dataset.
+Implementation of **DINOv2-based Multi-scale Ensemble Voting for FGVC**.
 
 We utilize the self-supervised DINOv2-B with the IELT attention head ensemble learning mechanism. Additionally, we make the following improvements:
 
