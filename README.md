@@ -4,13 +4,12 @@ Implementation of DINOv2-based FGVC on Oxford Flowers dataset.
 
 Currently, it is based on the self-supervised DINOv2-B with the IELT attention head ensemble learning mechanism. Additionally, we make the following improvements:
 
-1. Batch-hard triplet loss (see loss.py and train/) [TASK 4]
-2. Multi-scale gaussian filter in MHV within IELT, in all blocks {1 .. L-1}, using dilated conv [TASK 1]
-3. Mixup (made it worse, maybe it is not implemented right) [TASK 3]
+1. Batch-hard triplet loss (see loss.py and train/)
+2. Multi-scale gaussian filter in MHV within IELT, in all blocks {1 .. L-1}, using dilated conv
+3. Inattentive token merger
 
-Disambiguation: The existing works directly evaluate on test set during training, and do not use the validation set. For consistency, our results are also evaluated on the test set.
+<img src="figures/test_images.png" alt="Test Image" width="50%" />
 
-![Test Image](figures/test_images.png)
 Figure 1: Example classification results of our models
 
 # Usage
@@ -23,10 +22,13 @@ In `test/`,<br>
 Evaluate the model performance with `test.py`. Provide args to weight directory. <br>
 Draw the diagram of example classifications with `test_img.py`.<br>
 
-# Proposed Changes
+# Proposed Methods
 
 ## Architectural
 We propose the use of DINOv2 as a backbone network to replace the original ViT used in the the [IELT](https://github.com/mobulan/IELT) paper.
+<img src="https://github.com/user-attachments/assets/727dca34-bb56-4bb9-affa-0686080227cb" alt="sc4001_arch" width="50%" />
+
+Figure 1: Proposed Model Architecture
 
 Additionally, the Multi-head Voting Module (MHV) in IELT currently uses a gaussian or learnable 3x3 kernel to enhance the voting on each attention head map. We propose one that is done at multiple scales with a dialated convolution, such that the final enhancement is defined as the regions maximally enhanced at all scales. It achieves marginally higher performance than the baseline.
 
@@ -43,11 +45,18 @@ The following backbones are used:<br>
 The results with the specified configurations are shown in Table 1.
 
 Table 1: Results of model training on Oxford Flowers test set
-| Backbone    | Optimizer   | Loss         | Augmentation         | Misc.                | Top-1 Accuracy (%) | Top-5 Accuracy (%) | Weights |
-|-------------|-------------|--------------|----------------------|----------------------|--------------------|--------------------|---------|
-| ViT-B_16    | SGD, 2e-2   | CE           | RandomHorizontalFlip |                      | 99.351 (16)        |                    |         |
-| ViT-B_16    | SGD, 2e-2   | CE + Triplet | RandomHorizontalFlip | Multi-Scale Gaussian | 99.401 (12)        |                    |         |
-| DINOv2-B_14 | AdamW, 1e-5 | CE + Triplet | RandomHorizontalFlip | Multi-Scale Gaussian | 99.528 (11)        |  99.77            | [Link](https://entuedu-my.sharepoint.com/:f:/g/personal/etan102_e_ntu_edu_sg/Eq49NiW8T3tErMMcyL585mwB7E5GtLjnDfh2WHYd680qwQ?e=Id4xyR)    |
+| **Backbone**      | **Optimizer**   | **Loss**            | **Misc.**              | **Top-1 Acc. (%)** | **Top-5 Acc. (%)** |
+|-------------------|------------------|----------------------|-------------------------|--------------------|---------------------|
+| ViT-B\_16          | SGD, 2e-2        | CE                   | --                      | 99.32              | 99.84               |
+| ViT-B\_16          | SGD, 2e-2        | CE + Triplet         | Multi-Scale Gaussian    | 99.46              | **99.84**           |
+| DINOv2-B\_14       | AdamW, 1e-5      | CE + Triplet         | Multi-Scale Gaussian    | **[99.528](https://entuedu-my.sharepoint.com/:u:/r/personal/etan102_e_ntu_edu_sg/Documents/SC4001%20Project%20(Model%20Weights)/dinov2_99.528.bin?csf=1&web=1&e=KpKCy8)**         | 99.77               |
+| DINOv2-S\_14       | AdamW, 1e-5      | CE + Triplet         | Multi-Scale Gaussian    | 97.707             | 99.69               |
+
+Table 2: Preliminary results on other FGVC datasets
+| **Dataset**       | **Top-1 Acc. (%)** | **Top-5 Acc. (%)** |
+|-------------------|--------------------|---------------------|
+| CUB_200_2011      | 88.107             | 97.43               |
+| Stanford Dogs     | 88.01              | 98.74               |
 
 
 
