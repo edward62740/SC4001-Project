@@ -2,35 +2,28 @@
 
 Implementation of DINOv2-based FGVC on Oxford Flowers dataset.
 
-Currently, it is based on the self-supervised DINOv2-B with the IELT attention head ensemble learning mechanism. Additionally, we make the following improvements:
+We utilize the self-supervised DINOv2-B with the IELT attention head ensemble learning mechanism. Additionally, we make the following improvements:
 
 1. Batch-hard triplet loss (see loss.py and train/)
 2. Multi-scale gaussian filter in MHV within IELT, in all blocks {1 .. L-1}, using dilated conv
 3. Inattentive token merger
 
+Additional information and ablation can be found in the [paper](). Some example classifications are below.
+
 <img src="figures/test_images.png" alt="Test Image" width="50%" />
-
 Figure 1: Example classification results of our models
-
-# Usage
-
-Run `bootstrap.py` to create the dataset and label files.<br>
-Model can be trained with `train.py` in the `train/` folder. It is important to define MAX_GRAD_ACCUM_SUB_BATCH such that it is divisible by 3 (for triplet loss), and is used to accumulate gradients (e.g. 32 batch size takes >32 GB VRAM on V100) <br>
-The config location is set in `setup.py`. The config file should contain all non-default settings.<br>
-
-In `test/`,<br>
-Evaluate the model performance with `test.py`. Provide args to weight directory. <br>
-Draw the diagram of example classifications with `test_img.py`.<br>
 
 # Proposed Methods
 
 ## Architectural
-We propose the use of DINOv2 as a backbone network to replace the original ViT used in the the [IELT](https://github.com/mobulan/IELT) paper.
+DINOv2 is used as the backbone network, and fine-tuned to the specific FGVC task. Tokens are selectively forwarded via the [IELT](https://github.com/mobulan/IELT) mechanism.
 <img src="https://github.com/user-attachments/assets/727dca34-bb56-4bb9-affa-0686080227cb" alt="sc4001_arch" width="50%" />
 
 Figure 1: Proposed Model Architecture
 
-Additionally, the Multi-head Voting Module (MHV) in IELT currently uses a gaussian or learnable 3x3 kernel to enhance the voting on each attention head map. We propose one that is done at multiple scales with a dialated convolution, such that the final enhancement is defined as the regions maximally enhanced at all scales. It achieves marginally higher performance than the baseline.
+Multi-head Voting Module (MHV) in IELT currently uses a gaussian or learnable 3x3 kernel to enhance the voting on each attention head map. We propose one that is done at multiple scales with a dialated convolution, such that the final enhancement is defined as the regions maximally enhanced at all scales. It achieves marginally higher performance than the baseline.
+
+Non-forwarded or "inattentive" tokens are merged by linear combination and forwarded to CLR.
 
 ## Training
 We implement a joint loss function with the standard CE loss, and a triplet loss component. The triplet loss component provides the loss for the triplet set with the hardest negative in a given batch.
@@ -58,6 +51,15 @@ Table 2: Preliminary results on other FGVC datasets
 | CUB_200_2011      | 88.107             | 97.43               |
 | Stanford Dogs     | 88.01              | 98.74               |
 
+# Usage
+
+Run `bootstrap.py` to create the dataset and label files.<br>
+Model can be trained with `train.py` in the `train/` folder. It is important to define MAX_GRAD_ACCUM_SUB_BATCH such that it is divisible by 3 (for triplet loss), and is used to accumulate gradients (e.g. 32 batch size takes >32 GB VRAM on V100) <br>
+The config location is set in `setup.py`. The config file should contain all non-default settings.<br>
+
+In `test/`,<br>
+Evaluate the model performance with `test.py`. Provide args to weight directory. <br>
+Draw the diagram of example classifications with `test_img.py`.<br>
 
 
 # Citations
