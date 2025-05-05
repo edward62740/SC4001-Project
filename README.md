@@ -1,6 +1,6 @@
 # SC4001 Project
 
-Implementation of **DINOv2-based Multi-scale Ensemble Voting for FGVC**.
+Implementation of **DINOv2-based Multi-scale Ensemble Voting for FGVC**. *This project is for SC4001.*
 
 We utilize the self-supervised DINOv2-B with the IELT attention head ensemble learning mechanism. Additionally, we make the following improvements:
 
